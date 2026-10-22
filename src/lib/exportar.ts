@@ -75,8 +75,8 @@ export function nomeDoArquivo(tabela: Tabela, data = new Date()): string {
   return `${base}_PEDIDO_${dia}.xlsx`;
 }
 
-/** Gera o .xlsx no navegador e dispara o download. */
-export async function baixarPedido(tabela: Tabela, qtds: Quantidades) {
+/** Gera o .xlsx no navegador e dispara o download. Devolve o nome do arquivo baixado. */
+export async function baixarPedido(tabela: Tabela, qtds: Quantidades): Promise<string> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = montarPedido(ExcelJS, tabela, qtds);
   const buffer = await wb.xlsx.writeBuffer();
@@ -86,9 +86,11 @@ export async function baixarPedido(tabela: Tabela, qtds: Quantidades) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = nomeDoArquivo(tabela);
+  const nome = nomeDoArquivo(tabela);
+  a.download = nome;
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return nome;
 }

@@ -1,15 +1,160 @@
 @import "tailwindcss";
 
+/* Cores da X3 Suplementos, tiradas da logo (preto, branco e verde-limão).
+   O limão é só preenchimento (com texto preto por cima); texto e foco usam o verde escuro. */
+@theme {
+  --color-x3: #8cc63f;
+  --color-x3-escuro: #7ab52f;
+  --color-x3-texto: #3f7a14;
+  --color-x3-suave: #f2f8e8;
+  --color-x3-borda: #c4e09c;
+  --color-tinta: #111111;
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Voz da marca (como o "SUPLEMENTOS" da logo): Archivo condensada e pesada.
+   Só para marca, títulos e números grandes; o resto é Archivo na largura normal. */
+@utility tipo-display {
+  font-weight: 800;
+  font-variation-settings: "wdth" 75;
+  line-height: 1.1;
+  letter-spacing: 0.005em;
+  word-spacing: 0.08em;
+}
+
 :root {
   color-scheme: light;
-  --fundo: #f6f7f5;
-  --tinta: #1c1f1a;
+  --fundo: #f5f5f5;
+  --tinta: #111111;
 }
 
 body {
   background: var(--fundo);
   color: var(--tinta);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--color-x3-texto);
+}
+
+/* O espaço da Archivo é estreito (0,21em) e "MAX TITANIUM" vira "MAXTITANIUM".
+   Declarado em cada elemento para acompanhar o tamanho da fonte dele. */
+@layer base {
+  * {
+    word-spacing: 0.05em;
+  }
+}
+
+/* Filtro de marca: sem a seta do navegador (a seta é um ícone desenhado no componente) */
+.seletor {
+  appearance: none;
+}
+
+/* Chrome/Edge 135+: a lista aberta também ganha o visual do app. Nos outros fica a lista nativa. */
+@supports (appearance: base-select) {
+  .seletor,
+  .seletor::picker(select) {
+    appearance: base-select;
+  }
+  .seletor {
+    display: flex;
+    align-items: center;
+  }
+  .seletor::picker-icon {
+    display: none;
+  }
+  .seletor::picker(select) {
+    margin-block: 6px;
+    max-height: min(20rem, 60vh);
+    padding: 4px;
+    border: 1px solid var(--color-neutral-200);
+    border-radius: 0.75rem;
+    background: white;
+    box-shadow: 0 12px 32px -8px rgb(17 17 17 / 0.22);
+  }
+  .seletor option {
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-neutral-800);
+    cursor: pointer;
+  }
+  .seletor option:hover,
+  .seletor option:focus-visible {
+    outline: none;
+    background: var(--color-neutral-100);
+  }
+  .seletor option:checked {
+    font-weight: 600;
+    color: var(--color-tinta);
+    background: var(--color-x3-suave);
+  }
+  .seletor option::checkmark {
+    color: var(--color-x3-texto);
+  }
+}
+
+/* Aviso de pedido exportado (AvisoExportado): sobe, a bolinha verde aparece e o check se desenha */
+@keyframes aviso-entra {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+@keyframes aviso-sai {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes aviso-circulo {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+@keyframes aviso-check {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+.aviso-entra {
+  animation: aviso-entra 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.aviso-sai {
+  animation: aviso-sai 200ms ease-in both;
+}
+.aviso-circulo {
+  transform-origin: center;
+  animation: aviso-circulo 380ms 120ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.aviso-check {
+  stroke-dasharray: 1;
+  animation: aviso-check 320ms 320ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aviso-entra,
+  .aviso-sai {
+    animation-name: none;
+  }
+  .aviso-entra {
+    animation: aviso-aparece 160ms ease-out both;
+  }
+  .aviso-circulo,
+  .aviso-check {
+    animation: none;
+  }
+}
+@keyframes aviso-aparece {
+  from {
+    opacity: 0;
+  }
+}
+
+::selection {
+  background: #dcefc2;
+  color: var(--color-tinta);
 }
 
 /* Some com as setinhas do input numérico */

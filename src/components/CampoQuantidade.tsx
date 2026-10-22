@@ -12,7 +12,7 @@ export default function CampoQuantidade({ valor, aoMudar, rotulo }: Props) {
   return (
     <div
       className={`inline-flex items-center rounded-lg border transition-colors ${
-        ativo ? "border-amber-400 bg-amber-50" : "border-stone-300 bg-white"
+        ativo ? "border-x3-texto bg-white" : "border-neutral-300 bg-white"
       }`}
     >
       <button
@@ -20,9 +20,9 @@ export default function CampoQuantidade({ valor, aoMudar, rotulo }: Props) {
         onClick={() => aoMudar(Math.max(0, valor - 1))}
         disabled={!ativo}
         aria-label={`Diminuir ${rotulo}`}
-        className="h-8 w-8 rounded-l-lg text-lg leading-none text-stone-500 hover:bg-stone-100 disabled:opacity-30 disabled:hover:bg-transparent"
+        className="grid h-8 w-8 place-items-center rounded-l-lg pointer-coarse:h-11 pointer-coarse:w-11 text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent"
       >
-        −
+        <Sinal />
       </button>
       <input
         type="number"
@@ -36,18 +36,26 @@ export default function CampoQuantidade({ valor, aoMudar, rotulo }: Props) {
           const n = parseInt(e.target.value, 10);
           aoMudar(Number.isFinite(n) && n > 0 ? n : 0);
         }}
-        className={`h-8 w-12 bg-transparent text-center text-sm tabular-nums outline-none placeholder:text-stone-300 ${
-          ativo ? "font-semibold text-stone-900" : "text-stone-600"
+        className={`h-8 w-12 bg-transparent text-center text-sm tabular-nums pointer-coarse:h-11 pointer-coarse:w-14 pointer-coarse:text-base outline-none placeholder:text-neutral-300 ${
+          ativo ? "font-semibold text-neutral-900" : "text-neutral-600"
         }`}
       />
       <button
         type="button"
         onClick={() => aoMudar(valor + 1)}
         aria-label={`Aumentar ${rotulo}`}
-        className="h-8 w-8 rounded-r-lg text-lg leading-none text-stone-500 hover:bg-stone-100"
+        className="grid h-8 w-8 place-items-center rounded-r-lg pointer-coarse:h-11 pointer-coarse:w-11 text-neutral-600 hover:bg-neutral-100"
       >
-        +
+        <Sinal mais />
       </button>
     </div>
+  );
+}
+
+function Sinal({ mais }: { mais?: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <path d={mais ? "M5 12h14M12 5v14" : "M5 12h14"} />
+    </svg>
   );
 }
