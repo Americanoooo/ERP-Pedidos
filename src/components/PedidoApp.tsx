@@ -29,6 +29,8 @@ export default function PedidoApp() {
   const [exportando, setExportando] = useState(false);
   const [arrastando, setArrastando] = useState(false);
   const [confirmandoZerar, setConfirmandoZerar] = useState(false);
+  // Planilha escolhida que espera confirmação, porque importar apaga o pedido atual
+  const [arquivoPendente, setArquivoPendente] = useState<File | null>(null);
 
   const inputArquivo = useRef<HTMLInputElement>(null);
   const buscaAdiada = useDeferredValue(busca);
@@ -109,9 +111,14 @@ export default function PedidoApp() {
     });
   }, []);
 
-  async function abrirArquivo(arquivo: File) {
+  function abrirArquivo(arquivo: File) {
     setErro(null);
-    if (resumo.itens > 0 && !confirm("Importar outra tabela apaga as quantidades que você já preencheu. Continuar?")) return;
+    if (resumo.itens > 0) setArquivoPendente(arquivo);
+    else importar(arquivo);
+  }
+
+  async function importar(arquivo: File) {
+    setArquivoPendente(null);
     try {
       const nova = importarPlanilha(await arquivo.arrayBuffer(), arquivo.name);
       setTabela(nova);
@@ -205,6 +212,22 @@ export default function PedidoApp() {
           {resumo.unidades === 1 ? "unidade" : "unidades"})
         </strong>{" "}
         voltam para zero. A tabela importada continua aqui.
+      </ConfirmarDialogo>
+
+      <ConfirmarDialogo
+        aberto={arquivoPendente !== null}
+        titulo="Importar outra tabela?"
+        rotuloConfirmar="Importar e apagar"
+        aoConfirmar={() => arquivoPendente && importar(arquivoPendente)}
+        aoCancelar={() => setArquivoPendente(null)}
+      >
+        Abrir <strong className="break-all font-semibold text-stone-900">{arquivoPendente?.name}</strong> apaga as
+        quantidades de{" "}
+        <strong className="font-semibold text-stone-900">
+          {resumo.itens} {resumo.itens === 1 ? "produto" : "produtos"} ({resumo.unidades}{" "}
+          {resumo.unidades === 1 ? "unidade" : "unidades"})
+        </strong>{" "}
+        do pedido atual. Se ainda precisa delas, exporte o pedido antes.
       </ConfirmarDialogo>
 
       {/* Lateral (desktop): marca, ação principal e a tabela em uso */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 interface Props {
   aberto: boolean;
@@ -19,6 +19,7 @@ interface Props {
 export default function ConfirmarDialogo({ aberto, titulo, children, rotuloConfirmar, aoConfirmar, aoCancelar }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const cancelar = useRef<HTMLButtonElement>(null);
+  const id = useId();
 
   useEffect(() => {
     const d = ref.current;
@@ -35,8 +36,8 @@ export default function ConfirmarDialogo({ aberto, titulo, children, rotuloConfi
   return (
     <dialog
       ref={ref}
-      aria-labelledby="dialogo-titulo"
-      aria-describedby="dialogo-texto"
+      aria-labelledby={`${id}-titulo`}
+      aria-describedby={`${id}-texto`}
       onCancel={(e) => {
         e.preventDefault();
         aoCancelar();
@@ -48,10 +49,10 @@ export default function ConfirmarDialogo({ aberto, titulo, children, rotuloConfi
       className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-stone-200 bg-white p-0 text-stone-900 shadow-[0_12px_32px_-8px_rgba(28,31,26,0.28)] transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] backdrop:bg-stone-900/45 backdrop:transition-opacity backdrop:duration-200 starting:open:translate-y-1.5 starting:open:scale-[0.98] starting:open:opacity-0 starting:open:backdrop:opacity-0 motion-reduce:transition-none motion-reduce:backdrop:transition-none"
     >
       <div className="p-6">
-        <h2 id="dialogo-titulo" className="text-lg font-semibold tracking-tight">
+        <h2 id={`${id}-titulo`} className="text-lg font-semibold tracking-tight">
           {titulo}
         </h2>
-        <div id="dialogo-texto" className="mt-2 text-sm leading-relaxed text-stone-600">
+        <div id={`${id}-texto`} className="mt-2 text-sm leading-relaxed text-stone-600">
           {children}
         </div>
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
