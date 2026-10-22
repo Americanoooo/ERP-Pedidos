@@ -32,6 +32,10 @@ export default function CampoQuantidade({ valor, aoMudar, rotulo }: Props) {
         placeholder="0"
         aria-label={rotulo}
         onFocus={(e) => e.target.select()}
+        // Só número inteiro: sem isso "2.5" virava 2 e "1e3" virava 1 sem avisar
+        onKeyDown={(e) => {
+          if (["e", "E", ".", ",", "-", "+"].includes(e.key)) e.preventDefault();
+        }}
         onChange={(e) => {
           const n = parseInt(e.target.value, 10);
           aoMudar(Number.isFinite(n) && n > 0 ? n : 0);
