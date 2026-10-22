@@ -653,7 +653,6 @@ function Marca() {
       </span>
       <span className="leading-tight">
         <span className="tipo-display block whitespace-nowrap text-[1.0625rem] uppercase text-tinta">Pedido de Reposição</span>
-        <span className="block text-xs font-medium text-neutral-500">X3 Suplementos</span>
       </span>
     </div>
   );

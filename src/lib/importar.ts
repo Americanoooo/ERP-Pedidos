@@ -40,14 +40,49 @@ function estiloDe(cell: XLSX.CellObject | undefined): EstiloCelula {
   return estilo;
 }
 
+/**
+ * Número escrito como texto, no jeito brasileiro ou não: "R$ 1.234,56", "0,99", "159.9", "1.500".
+ * Com vírgula, ela é a decimal e o ponto é milhar. Sem vírgula, o ponto só é milhar
+ * quando parece ("1.500", "12.345.678"); senão é decimal ("159.9", "12.50").
+ */
+function textoParaNumero(texto: string): number | null {
+  const s = texto.replace(/R\$|\s/g, "");
+  if (!/^-?[\d.,]*\d[\d.,]*$/.test(s)) return null;
+  let normal = s;
+  if (s.includes(",")) normal = s.replace(/\./g, "").replace(",", ".");
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) normal = s.replace(/\./g, "");
+  const n = Number(normal);
+  return Number.isFinite(n) ? n : null;
+}
+
 function paraNumero(v: ValorCelula): number | null {
   if (typeof v === "number") return v;
-  if (typeof v === "string") {
-    const limpo = v.replace(/[R$\s.]/g, "").replace(",", ".");
-    const n = Number(limpo);
-    return limpo !== "" && Number.isFinite(n) ? n : null;
-  }
+  if (typeof v === "string") return textoParaNumero(v);
   return null;
+}
+
+/**
+ * Arquivos de texto com números no jeito brasileiro: o CSV do Excel em português (";" e vírgula decimal)
+ * e o .xls em HTML que alguns sistemas exportam. A leitura padrão entende "159,90" como 15990,
+ * então esses arquivos são lidos como texto e os números convertidos aqui.
+ */
+function lerComoTexto(dados: ArrayBuffer): boolean {
+  const inicio = new Uint8Array(dados.slice(0, 4096));
+  // .xlsx é um zip ("PK") e .xls é binário: os números já vêm certos
+  if (inicio[0] === 0x50 && inicio[1] === 0x4b) return false;
+  if (inicio.includes(0)) return false;
+  const conteudo = new TextDecoder().decode(inicio).replace(/^\uFEFF/, "").trimStart();
+  if (conteudo.startsWith("<")) return true;
+  const primeira = conteudo.split(/\r?\n/).find((l) => l.trim()) ?? "";
+  return (primeira.match(/;/g)?.length ?? 0) > (primeira.match(/,/g)?.length ?? 0);
+}
+
+/** Valor de uma célula lida como texto: número quando é número, texto quando é código com zero à esquerda. */
+function celulaTexto(v: ValorCelula): ValorCelula {
+  if (typeof v !== "string") return v;
+  const t = v.trim();
+  if (/^0\d/.test(t)) return t; // código "00123" continua "00123"
+  return textoParaNumero(t) ?? v;
 }
 
 function paraTexto(v: ValorCelula): string {
@@ -55,19 +90,42 @@ function paraTexto(v: ValorCelula): string {
   return String(v).trim();
 }
 
+/**
+ * Barra arquivo que não é planilha (PDF, imagem, Word…) com uma mensagem que diz isso,
+ * em vez de "não encontrei a coluna de produto". Aceita .xlsx (zip), .xls (binário do Office),
+ * o .xls em HTML que alguns sistemas geram, e CSV/TXT.
+ */
+function conferirFormato(dados: ArrayBuffer, nomeArquivo: string) {
+  if (dados.byteLength === 0) throw new Error("O arquivo está vazio.");
+  const b = new Uint8Array(dados.slice(0, 8));
+  const zip = b[0] === 0x50 && b[1] === 0x4b;
+  const office = b[0] === 0xd0 && b[1] === 0xcf && b[2] === 0x11 && b[3] === 0xe0;
+  const inicio = new TextDecoder().decode(new Uint8Array(dados.slice(0, 64))).replace(/^\uFEFF/, "").trimStart();
+  const html = inicio.startsWith("<");
+  const texto = /\.(csv|txt)$/i.test(nomeArquivo);
+  if (!zip && !office && !html && !texto) {
+    throw new Error(
+      "Esse arquivo não é uma planilha do Excel. Abra a tabela no Excel e salve como .xlsx antes de importar.",
+    );
+  }
+}
+
 /** Lê .xls, .xlsx ou .csv e devolve a tabela de produtos. */
 export function importarPlanilha(dados: ArrayBuffer, nomeArquivo: string): Tabela {
-  const wb = XLSX.read(dados, { type: "array", cellNF: true, cellStyles: true });
+  conferirFormato(dados, nomeArquivo);
+  const comoTexto = lerComoTexto(dados);
+  const wb = XLSX.read(dados, { type: "array", cellNF: true, cellStyles: true, raw: comoTexto });
   const nomeAba = wb.SheetNames[0];
   const ws = wb.Sheets[nomeAba];
   if (!ws || !ws["!ref"]) throw new Error("A planilha está vazia.");
 
-  const linhas = XLSX.utils.sheet_to_json<ValorCelula[]>(ws, {
+  const lidas = XLSX.utils.sheet_to_json<ValorCelula[]>(ws, {
     header: 1,
     raw: true,
     defval: null,
     blankrows: true,
   });
+  const linhas = comoTexto ? lidas.map((linha) => linha.map(celulaTexto)) : lidas;
 
   // Acha a linha de cabeçalho: a primeira (das 20 primeiras) que tem uma coluna de produto
   let linhaCab = linhas.slice(0, 20).findIndex((linha) => {
