@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import CampoQuantidade from "./CampoQuantidade";
-import { formatarReais } from "@/lib/texto";
+import { formatarReais, separarNome } from "@/lib/texto";
 import type { Produto } from "@/lib/tipos";
 
 interface Props {
@@ -14,8 +14,7 @@ interface Props {
 function LinhaProduto({ produto, quantidade, aoMudar }: Props) {
   const selecionado = quantidade > 0;
   const semEstoque = produto.estoque !== null && produto.estoque <= 0;
-  const [base, ...partes] = produto.nome.split(" - ");
-  const resto = partes.join(" - ");
+  const { base, resto } = separarNome(produto.nome);
 
   return (
     <tr className={`border-b border-neutral-100 ${selecionado ? "bg-x3-suave" : "hover:bg-neutral-50"}`}>

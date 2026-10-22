@@ -25,7 +25,7 @@ Não substitui a planilha do distribuidor: trabalha em cima dela. Lê qualquer v
 - Ciclo: distribuidor envia a tabela → funcionário importa no site → filtra, pesquisa e preenche quantidades → exporta o .xlsx → devolve ao distribuidor.
 - Tabelas longas de suplementos (whey, creatina, pré-treino, aminoácidos, barras, vitaminas, termogênicos, bebidas, acessórios), com nomes no padrão "PRODUTO - MARCA SABOR".
 - O pedido fica salvo no navegador (localStorage); recarregar a página não perde o trabalho.
-- Dispositivo de uso ainda não confirmado (computador da loja é o cenário provável).
+- Celular e computador são igualmente importantes: há funcionários que só usam o celular e outros que só usam o computador. Os dois precisam ser de primeira classe.
 
 ## Capabilities and Constraints
 

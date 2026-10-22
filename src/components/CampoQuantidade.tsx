@@ -20,7 +20,7 @@ export default function CampoQuantidade({ valor, aoMudar, rotulo }: Props) {
         onClick={() => aoMudar(Math.max(0, valor - 1))}
         disabled={!ativo}
         aria-label={`Diminuir ${rotulo}`}
-        className="grid h-8 w-8 place-items-center rounded-l-lg text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent"
+        className="grid h-8 w-8 place-items-center rounded-l-lg pointer-coarse:h-11 pointer-coarse:w-11 text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent"
       >
         <Sinal />
       </button>
@@ -36,7 +36,7 @@ export default function CampoQuantidade({ valor, aoMudar, rotulo }: Props) {
           const n = parseInt(e.target.value, 10);
           aoMudar(Number.isFinite(n) && n > 0 ? n : 0);
         }}
-        className={`h-8 w-12 bg-transparent text-center text-sm tabular-nums outline-none placeholder:text-neutral-300 ${
+        className={`h-8 w-12 bg-transparent text-center text-sm tabular-nums pointer-coarse:h-11 pointer-coarse:w-14 pointer-coarse:text-base outline-none placeholder:text-neutral-300 ${
           ativo ? "font-semibold text-neutral-900" : "text-neutral-600"
         }`}
       />
@@ -44,7 +44,7 @@ export default function CampoQuantidade({ valor, aoMudar, rotulo }: Props) {
         type="button"
         onClick={() => aoMudar(valor + 1)}
         aria-label={`Aumentar ${rotulo}`}
-        className="grid h-8 w-8 place-items-center rounded-r-lg text-neutral-600 hover:bg-neutral-100"
+        className="grid h-8 w-8 place-items-center rounded-r-lg pointer-coarse:h-11 pointer-coarse:w-11 text-neutral-600 hover:bg-neutral-100"
       >
         <Sinal mais />
       </button>

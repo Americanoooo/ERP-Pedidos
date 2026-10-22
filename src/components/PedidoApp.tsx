@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import LinhaProduto from "./LinhaProduto";
+import CartaoProduto from "./CartaoProduto";
 import ConfirmarDialogo from "./ConfirmarDialogo";
+import AvisoExportado, { type Exportado } from "./AvisoExportado";
 import { importarPlanilha } from "@/lib/importar";
 import { baixarPedido, produtosSelecionados } from "@/lib/exportar";
 import { CATEGORIAS, OUTROS, categoriasDoProduto } from "@/lib/categorias";
@@ -13,6 +15,29 @@ import type { Produto, Quantidades, Tabela } from "@/lib/tipos";
 type CampoOrdem = "original" | "nome" | "fabricante" | "estoque" | "preco";
 
 const TIPOS = [...CATEGORIAS.map((c) => c.nome), OUTROS];
+
+/** No celular não há cabeçalho de coluna pra clicar, então a ordem vem de um campo */
+const ORDENS: { rotulo: string; campo: CampoOrdem; asc: boolean }[] = [
+  { rotulo: "Ordem da planilha", campo: "original", asc: true },
+  { rotulo: "Nome (A–Z)", campo: "nome", asc: true },
+  { rotulo: "Menor estoque", campo: "estoque", asc: true },
+  { rotulo: "Menor preço", campo: "preco", asc: true },
+  { rotulo: "Maior preço", campo: "preco", asc: false },
+  { rotulo: "Marca (A–Z)", campo: "fabricante", asc: true },
+];
+
+/** Tela de celular: abaixo de 768px a lista vira cartões. Renderiza só um dos dois formatos. */
+function useCelular() {
+  return useSyncExternalStore(
+    (avisar) => {
+      const m = matchMedia("(max-width: 47.99rem)");
+      m.addEventListener("change", avisar);
+      return () => m.removeEventListener("change", avisar);
+    },
+    () => matchMedia("(max-width: 47.99rem)").matches,
+    () => false,
+  );
+}
 const EXTENSOES = ".xls,.xlsx,.csv";
 
 export default function PedidoApp() {
@@ -27,12 +52,14 @@ export default function PedidoApp() {
   const [ordem, setOrdem] = useState<{ campo: CampoOrdem; asc: boolean }>({ campo: "original", asc: true });
   const [erro, setErro] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [exportado, setExportado] = useState<Exportado | null>(null);
   const [arrastando, setArrastando] = useState(false);
   const [confirmandoZerar, setConfirmandoZerar] = useState(false);
   // Planilha escolhida que espera confirmação, porque importar apaga o pedido atual
   const [arquivoPendente, setArquivoPendente] = useState<File | null>(null);
 
   const inputArquivo = useRef<HTMLInputElement>(null);
+  const celular = useCelular();
   const buscaAdiada = useDeferredValue(busca);
 
   useEffect(() => salvarTabela(tabela), [tabela]);
@@ -137,13 +164,16 @@ export default function PedidoApp() {
     if (!tabela || resumo.itens === 0) return;
     setExportando(true);
     try {
-      await baixarPedido(tabela, qtds);
+      const arquivo = await baixarPedido(tabela, qtds);
+      setExportado({ id: Date.now(), arquivo, itens: resumo.itens, unidades: resumo.unidades });
     } catch {
       setErro("Deu erro ao gerar a planilha. Tenta de novo.");
     } finally {
       setExportando(false);
     }
   }
+
+  const fecharAviso = useCallback(() => setExportado(null), []);
 
   function limparPedido() {
     setQtds({});
@@ -205,6 +235,8 @@ export default function PedidoApp() {
           e.target.value = "";
         }}
       />
+
+      <AvisoExportado aviso={exportado} aoFechar={fecharAviso} />
 
       <ConfirmarDialogo
         aberto={confirmandoZerar}
@@ -351,9 +383,20 @@ export default function PedidoApp() {
                       <h2 id="titulo-produtos" className="text-lg font-bold leading-snug text-tinta">
                         Produtos
                       </h2>
-                      <p className="mt-0.5 text-sm text-neutral-500" aria-live="polite">
-                        Mostrando {visiveis.length} de {tabela.produtos.length}
-                      </p>
+                      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 text-sm">
+                        <p className="text-neutral-500" aria-live="polite">
+                          Mostrando {visiveis.length} de {tabela.produtos.length}
+                        </p>
+                        {filtrosAtivos ? (
+                          <button
+                            type="button"
+                            onClick={limparFiltros}
+                            className={`${foco} rounded font-medium text-x3-texto underline underline-offset-4 pointer-coarse:py-1`}
+                          >
+                            Limpar filtros
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                     <div role="group" aria-label="Quais produtos mostrar" className="inline-flex rounded-xl bg-neutral-100 p-1">
                       <Aba ativo={!soSelecionados} aoClicar={() => setSoSelecionados(false)}>
@@ -376,36 +419,69 @@ export default function PedidoApp() {
                         onChange={(e) => setBusca(e.target.value)}
                         placeholder="Buscar por nome, sabor, ID ou marca…"
                         aria-label="Buscar produto"
-                        className="h-10 w-full rounded-xl border border-neutral-300 bg-white pl-9 pr-10 text-sm outline-none placeholder:text-neutral-500 focus:border-x3-texto focus:ring-2 focus:ring-x3/30 [&::-webkit-search-cancel-button]:appearance-none"
+                        className="h-11 w-full rounded-xl border border-neutral-300 bg-white pl-9 pr-10 text-base outline-none sm:h-10 sm:text-sm pointer-coarse:text-base placeholder:text-neutral-500 focus:border-x3-texto focus:ring-2 focus:ring-x3/30 [&::-webkit-search-cancel-button]:appearance-none"
                       />
                       {busca && (
                         <button
                           type="button"
                           onClick={() => setBusca("")}
                           aria-label="Limpar busca"
-                          className={`${foco} absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800`}
+                          className={`${foco} absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800`}
                         >
                           <IconeFechar />
                         </button>
                       )}
                     </div>
-                    <select
-                      value={marca}
-                      onChange={(e) => setMarca(e.target.value)}
-                      aria-label="Filtrar por marca"
-                      className="h-10 min-w-[11rem] rounded-xl border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-x3-texto focus:ring-2 focus:ring-x3/30"
-                    >
-                      <option value="">Todas as marcas ({marcas.length})</option>
-                      {marcas.map(([m, n]) => (
-                        <option key={m} value={m}>
-                          {m} ({n})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative w-full sm:w-auto">
+                      <select
+                        value={marca}
+                        onChange={(e) => setMarca(e.target.value)}
+                        aria-label="Filtrar por marca"
+                        className={`seletor h-11 w-full min-w-[12rem] cursor-pointer rounded-xl border pl-3 pr-9 text-left text-base outline-none sm:h-10 sm:text-sm pointer-coarse:text-base transition-colors focus:border-x3-texto focus:ring-2 focus:ring-x3/30 ${
+                          marca
+                            ? "border-x3-texto bg-x3-suave font-medium text-tinta"
+                            : "border-neutral-300 bg-white text-neutral-800 hover:border-neutral-400"
+                        }`}
+                      >
+                        <option value="">Todas as marcas ({marcas.length})</option>
+                        {marcas.map(([m, n]) => (
+                          <option key={m} value={m}>
+                            {m} ({n})
+                          </option>
+                        ))}
+                      </select>
+                      <span
+                        className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${marca ? "text-x3-texto" : "text-neutral-500"}`}
+                      >
+                        <IconeAbrir />
+                      </span>
+                    </div>
+                    {celular && (
+                      <div className="relative w-full">
+                        <select
+                          value={`${ordem.campo}:${ordem.asc}`}
+                          onChange={(e) => {
+                            const [campo, asc] = e.target.value.split(":");
+                            setOrdem({ campo: campo as CampoOrdem, asc: asc === "true" });
+                          }}
+                          aria-label="Ordenar produtos"
+                          className="seletor h-11 w-full cursor-pointer rounded-xl border border-neutral-300 bg-white pl-3 pr-9 text-left text-base text-neutral-800 outline-none focus:border-x3-texto focus:ring-2 focus:ring-x3/30"
+                        >
+                          {ORDENS.map((o) => (
+                            <option key={o.rotulo} value={`${o.campo}:${o.asc}`}>
+                              Ordenar: {o.rotulo}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500">
+                          <IconeAbrir />
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 text-xs font-medium text-neutral-500">Tipo</span>
+                  <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+                    <span className="mr-1 shrink-0 text-xs font-medium text-neutral-500">Tipo</span>
                     {TIPOS.filter((t) => contagemTipos[t]).map((t) => {
                       const ativo = tipos.includes(t);
                       return (
@@ -414,7 +490,7 @@ export default function PedidoApp() {
                           type="button"
                           aria-pressed={ativo}
                           onClick={() => setTipos((a) => (ativo ? a.filter((x) => x !== t) : [...a, t]))}
-                          className={`${foco} rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          className={`${foco} shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors pointer-coarse:px-3.5 pointer-coarse:py-2 pointer-coarse:text-sm ${
                             ativo
                               ? "border-tinta bg-tinta text-white"
                               : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400"
@@ -424,20 +500,18 @@ export default function PedidoApp() {
                         </button>
                       );
                     })}
-                    {filtrosAtivos ? (
-                      <button
-                        type="button"
-                        onClick={limparFiltros}
-                        className={`${foco} ml-auto rounded text-xs font-medium text-x3-texto underline-offset-4 hover:underline`}
-                      >
-                        Limpar filtros
-                      </button>
-                    ) : null}
                   </div>
                 </div>
 
                 <div className="overflow-x-auto border-t border-neutral-200 lg:overflow-visible">
-                  {visiveis.length > 0 && (
+                  {visiveis.length > 0 && celular && (
+                    <ul aria-label="Produtos">
+                      {visiveis.map((p) => (
+                        <CartaoProduto key={p.chave} produto={p} quantidade={qtds[p.chave] ?? 0} aoMudar={mudarQuantidade} />
+                      ))}
+                    </ul>
+                  )}
+                  {visiveis.length > 0 && !celular && (
                     <table className="w-full min-w-[600px] border-collapse xl:min-w-[760px]">
                       <thead className="text-left text-xs font-medium text-neutral-500 [&_th]:bg-neutral-50 lg:[&_th]:sticky lg:[&_th]:top-0 lg:[&_th]:z-10 lg:[&_th]:shadow-[inset_0_-1px_0_var(--color-neutral-200)]">
                         <tr className="border-b border-neutral-200">
@@ -492,9 +566,11 @@ export default function PedidoApp() {
         {/* Barra do pedido (celular e tablet): exportar sempre à mão */}
         {tabela && (
           <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white lg:hidden">
-            <div className="flex items-center gap-2 px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
               <div className="mr-auto min-w-0">
-                <div className="text-xs text-neutral-500">Total no varejo</div>
+                <div className="whitespace-nowrap text-xs text-neutral-500">
+                  Total<span className="hidden min-[360px]:inline"> no varejo</span>
+                </div>
                 <div className="whitespace-nowrap text-base font-semibold tabular-nums text-neutral-900">
                   {formatarReais(resumo.valor)}
                 </div>
@@ -589,7 +665,7 @@ function Aba({ ativo, aoClicar, children }: { ativo: boolean; aoClicar: () => vo
       type="button"
       aria-pressed={ativo}
       onClick={aoClicar}
-      className={`${foco} rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+      className={`${foco} rounded-lg px-3 py-1.5 text-sm font-medium transition-colors pointer-coarse:py-2.5 ${
         ativo ? "bg-white text-neutral-900 shadow-[0_1px_2px_rgba(17,17,17,0.12)]" : "text-neutral-600 hover:text-neutral-900"
       }`}
     >
@@ -713,6 +789,14 @@ function IconeFechar() {
   return (
     <Icone>
       <path d="M6 6l12 12M18 6 6 18" />
+    </Icone>
+  );
+}
+
+function IconeAbrir() {
+  return (
+    <Icone>
+      <path d="m6 9 6 6 6-6" />
     </Icone>
   );
 }
