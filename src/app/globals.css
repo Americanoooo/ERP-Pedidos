@@ -10,6 +10,12 @@ body {
   background: var(--fundo);
   color: var(--tinta);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  caret-color: #047857;
+}
+
+::selection {
+  background: #d1fae5;
+  color: #064e3b;
 }
 
 /* Some com as setinhas do input numérico */

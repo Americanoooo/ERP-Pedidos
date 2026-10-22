@@ -17,22 +17,22 @@ function LinhaProduto({ produto, quantidade, aoMudar }: Props) {
 
   return (
     <tr className={`border-b border-stone-100 ${selecionado ? "bg-amber-50/70" : "hover:bg-stone-50"}`}>
-      <td className="px-3 py-2 text-xs tabular-nums text-stone-400">{produto.id}</td>
+      <td className="px-3 py-2 pl-4 text-xs tabular-nums text-stone-500 sm:pl-5">{produto.id}</td>
       <td className="px-3 py-2">
         <div className="text-sm font-medium text-stone-800">{produto.nome}</div>
       </td>
       <td className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-stone-500">{produto.fabricante}</td>
       <td className="px-3 py-2 text-right text-sm tabular-nums">
         {produto.estoque === null ? (
-          <span className="text-stone-300">—</span>
+          <span className="text-stone-400">—</span>
         ) : (
           <span className={semEstoque ? "font-semibold text-red-600" : "text-stone-700"}>{produto.estoque}</span>
         )}
       </td>
       <td className="px-3 py-2 text-right text-sm tabular-nums text-stone-700">
-        {produto.preco === null ? <span className="text-stone-300">—</span> : formatarReais(produto.preco)}
+        {produto.preco === null ? <span className="text-stone-400">—</span> : formatarReais(produto.preco)}
       </td>
-      <td className="px-3 py-2 text-right">
+      <td className="px-3 py-2 pr-4 text-right sm:pr-5">
         <CampoQuantidade
           valor={quantidade}
           rotulo={`quantidade de ${produto.nome}`}

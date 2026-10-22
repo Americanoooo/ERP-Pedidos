@@ -2,6 +2,7 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import LinhaProduto from "./LinhaProduto";
+import ConfirmarDialogo from "./ConfirmarDialogo";
 import { importarPlanilha } from "@/lib/importar";
 import { baixarPedido, produtosSelecionados } from "@/lib/exportar";
 import { CATEGORIAS, OUTROS, categoriasDoProduto } from "@/lib/categorias";
@@ -27,6 +28,7 @@ export default function PedidoApp() {
   const [erro, setErro] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
   const [arrastando, setArrastando] = useState(false);
+  const [confirmandoZerar, setConfirmandoZerar] = useState(false);
 
   const inputArquivo = useRef<HTMLInputElement>(null);
   const buscaAdiada = useDeferredValue(busca);
@@ -137,10 +139,9 @@ export default function PedidoApp() {
   }
 
   function limparPedido() {
-    if (confirm(`Zerar as quantidades de ${resumo.itens} produto(s)?`)) {
-      setQtds({});
-      setSoSelecionados(false);
-    }
+    setQtds({});
+    setSoSelecionados(false);
+    setConfirmandoZerar(false);
   }
 
   function alternarOrdem(campo: CampoOrdem) {
@@ -148,23 +149,37 @@ export default function PedidoApp() {
   }
 
   const filtrosAtivos = busca || marca || tipos.length || soSelecionados;
+  const semEstoque = useMemo(
+    () => tabela?.produtos.filter((p) => p.estoque !== null && p.estoque <= 0).length ?? 0,
+    [tabela],
+  );
+  const importadaEm = tabela
+    ? new Date(tabela.importadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+    : "";
 
-  const botaoImportar = (destaque: boolean) => (
+  const abrirSeletor = () => inputArquivo.current?.click();
+
+  const botaoExportar = (classe: string) => (
     <button
       type="button"
-      onClick={() => inputArquivo.current?.click()}
-      className={
-        destaque
-          ? "rounded-xl bg-emerald-700 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-emerald-800"
-          : "rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
-      }
+      onClick={exportar}
+      disabled={resumo.itens === 0 || exportando}
+      className={`${foco} inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(4,47,30,0.25)] hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-500 disabled:shadow-none ${classe}`}
     >
-      Importar tabela
+      <IconeBaixar />
+      {exportando ? (
+        "Gerando…"
+      ) : (
+        <span>
+          Exportar<span className="hidden sm:inline lg:inline"> pedido</span>
+          {resumo.itens ? ` (${resumo.itens})` : ""}
+        </span>
+      )}
     </button>
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen lg:grid lg:grid-cols-[minmax(0,1fr)_15.5rem]">
       <input
         ref={inputArquivo}
         type="file"
@@ -177,240 +192,348 @@ export default function PedidoApp() {
         }}
       />
 
-      {/* Topo */}
-      <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
-          <div className="mr-auto min-w-0">
-            <h1 className="text-lg font-bold tracking-tight text-stone-900">Pedido de Reposição</h1>
-            {tabela && (
-              <p className="truncate text-xs text-stone-500">
-                {tabela.nomeArquivo} · {tabela.produtos.length} produtos · importada{" "}
-                {new Date(tabela.importadaEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+      <ConfirmarDialogo
+        aberto={confirmandoZerar}
+        titulo="Zerar o pedido?"
+        rotuloConfirmar="Zerar pedido"
+        aoConfirmar={limparPedido}
+        aoCancelar={() => setConfirmandoZerar(false)}
+      >
+        As quantidades de{" "}
+        <strong className="font-semibold text-stone-900">
+          {resumo.itens} {resumo.itens === 1 ? "produto" : "produtos"} ({resumo.unidades}{" "}
+          {resumo.unidades === 1 ? "unidade" : "unidades"})
+        </strong>{" "}
+        voltam para zero. A tabela importada continua aqui.
+      </ConfirmarDialogo>
+
+      {/* Lateral (desktop): marca, ação principal e a tabela em uso */}
+      <aside className="sticky top-0 hidden h-screen flex-col border-l border-stone-200 bg-white px-4 py-5 lg:order-last lg:flex">
+        <Marca />
+
+        {tabela && (
+          <>
+            <div className="mt-8 space-y-2">
+              {botaoExportar("w-full")}
+              <p className="px-1 text-center text-xs tabular-nums text-stone-500">
+                {resumo.itens
+                  ? `${resumo.unidades} ${resumo.unidades === 1 ? "unidade" : "unidades"} · ${formatarReais(resumo.valor)}`
+                  : "Preencha a coluna Pedir para exportar"}
               </p>
-            )}
-          </div>
-          {tabela && botaoImportar(false)}
+              {resumo.itens > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoZerar(true)}
+                  className={`${foco} w-full rounded-xl px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50`}
+                >
+                  Zerar pedido
+                </button>
+              )}
+            </div>
+
+            <div className="mt-auto rounded-xl bg-stone-50 p-3">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 text-emerald-700">
+                  <IconePlanilha tamanho={18} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-stone-800" title={tabela.nomeArquivo}>
+                    {tabela.nomeArquivo}
+                  </p>
+                  <p className="mt-0.5 text-xs text-stone-500">Importada {importadaEm}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={abrirSeletor}
+                className={`${foco} mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100`}
+              >
+                Importar outra tabela
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+
+      <div className="flex min-w-0 flex-col">
+        {/* Topo (celular e tablet) */}
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6 lg:hidden">
+          <Marca />
           {tabela && (
             <button
               type="button"
-              onClick={exportar}
-              disabled={resumo.itens === 0 || exportando}
-              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-stone-300"
+              onClick={abrirSeletor}
+              className={`${foco} ml-auto rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50`}
             >
-              {exportando ? "Gerando…" : `Exportar pedido${resumo.itens ? ` (${resumo.itens})` : ""}`}
+              Importar tabela
             </button>
           )}
-        </div>
-      </header>
+        </header>
 
-      {erro && (
-        <div className="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6">
-          <div className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <span>{erro}</span>
-            <button onClick={() => setErro(null)} className="font-semibold" aria-label="Fechar aviso">
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!tabela ? (
-        /* Tela inicial: importar */
-        <main className="flex flex-1 items-center justify-center px-4 py-12">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setArrastando(true);
-            }}
-            onDragLeave={() => setArrastando(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setArrastando(false);
-              const f = e.dataTransfer.files?.[0];
-              if (f) abrirArquivo(f);
-            }}
-            className={`flex w-full max-w-xl flex-col items-center rounded-2xl border-2 border-dashed px-8 py-14 text-center transition-colors ${
-              arrastando ? "border-emerald-500 bg-emerald-50" : "border-stone-300 bg-white"
-            }`}
-          >
-            <div className="mb-5 grid h-14 w-14 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-                <rect x="4" y="3" width="16" height="18" rx="2" />
-                <path d="M8 8h8M8 12h8M8 16h5" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-stone-900">Importe a tabela de reposição</h2>
-            <p className="mt-2 max-w-sm text-sm text-stone-500">
-              Escolha a planilha (.xls ou .xlsx) ou arraste ela aqui. Depois é só preencher as quantidades e exportar o
-              pedido no mesmo formato.
-            </p>
-            <div className="mt-7">{botaoImportar(true)}</div>
-          </div>
-        </main>
-      ) : (
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-28 pt-4 sm:px-6">
-          {/* Filtros */}
-          <section className="space-y-3 rounded-xl border border-stone-200 bg-white p-3 sm:p-4">
-            <div className="flex flex-wrap gap-2">
-              <div className="relative min-w-[220px] flex-1">
-                <svg
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" />
-                </svg>
-                <input
-                  type="search"
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Buscar por nome, sabor, ID ou marca…"
-                  className="h-10 w-full rounded-lg border border-stone-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15"
-                />
-              </div>
-              <select
-                value={marca}
-                onChange={(e) => setMarca(e.target.value)}
-                aria-label="Filtrar por marca"
-                className="h-10 min-w-[180px] rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none focus:border-emerald-600"
-              >
-                <option value="">Todas as marcas ({marcas.length})</option>
-                {marcas.map(([m, n]) => (
-                  <option key={m} value={m}>
-                    {m} ({n})
-                  </option>
-                ))}
-              </select>
-              <label
-                className={`flex h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm ${
-                  soSelecionados ? "border-amber-400 bg-amber-50 text-amber-900" : "border-stone-300 text-stone-700"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={soSelecionados}
-                  onChange={(e) => setSoSelecionados(e.target.checked)}
-                  className="accent-amber-500"
-                />
-                Só selecionados
-              </label>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-xs font-medium uppercase tracking-wide text-stone-400">Tipo</span>
-              {TIPOS.filter((t) => contagemTipos[t]).map((t) => {
-                const ativo = tipos.includes(t);
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTipos((a) => (ativo ? a.filter((x) => x !== t) : [...a, t]))}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      ativo
-                        ? "border-emerald-700 bg-emerald-700 text-white"
-                        : "border-stone-300 bg-white text-stone-600 hover:border-stone-400"
-                    }`}
-                  >
-                    {t} <span className={ativo ? "text-emerald-100" : "text-stone-400"}>{contagemTipos[t]}</span>
-                  </button>
-                );
-              })}
-              {filtrosAtivos ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBusca("");
-                    setMarca("");
-                    setTipos([]);
-                    setSoSelecionados(false);
-                  }}
-                  className="ml-auto text-xs font-medium text-emerald-700 hover:underline"
-                >
-                  Limpar filtros
-                </button>
-              ) : null}
-            </div>
-          </section>
-
-          <p className="mb-2 mt-4 text-xs text-stone-500">
-            Mostrando {visiveis.length} de {tabela.produtos.length} produtos
-          </p>
-
-          {/* Tabela */}
-          <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
-            <table className="w-full min-w-[760px] border-collapse">
-              <thead className="sticky top-0 bg-stone-50 text-left text-[11px] font-semibold uppercase tracking-wide text-stone-500">
-                <tr className="border-b border-stone-200">
-                  <Cabecalho titulo="ID" campo="original" ordem={ordem} aoClicar={alternarOrdem} />
-                  <Cabecalho titulo="Produto" campo="nome" ordem={ordem} aoClicar={alternarOrdem} />
-                  <Cabecalho titulo="Marca" campo="fabricante" ordem={ordem} aoClicar={alternarOrdem} />
-                  <Cabecalho titulo="Estoque" campo="estoque" ordem={ordem} aoClicar={alternarOrdem} direita />
-                  <Cabecalho titulo="R$ Varejo" campo="preco" ordem={ordem} aoClicar={alternarOrdem} direita />
-                  <th className="px-3 py-2.5 text-right">Pedir</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visiveis.map((p) => (
-                  <LinhaProduto key={p.chave} produto={p} quantidade={qtds[p.chave] ?? 0} aoMudar={mudarQuantidade} />
-                ))}
-              </tbody>
-            </table>
-            {visiveis.length === 0 && (
-              <div className="px-4 py-14 text-center text-sm text-stone-500">
-                {soSelecionados && resumo.itens === 0
-                  ? "Nenhum produto com quantidade ainda."
-                  : "Nenhum produto encontrado com esses filtros."}
-              </div>
-            )}
-          </div>
-        </main>
-      )}
-
-      {/* Resumo do pedido */}
-      {tabela && (
-        <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-            <Numero rotulo="Produtos" valor={String(resumo.itens)} />
-            <Numero rotulo="Unidades" valor={String(resumo.unidades)} />
-            <Numero rotulo="Total no varejo" valor={formatarReais(resumo.valor)} />
-            <div className="ml-auto flex items-center gap-2">
-              {resumo.itens > 0 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setSoSelecionados((s) => !s)}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
-                  >
-                    {soSelecionados ? "Ver todos" : "Revisar pedido"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={limparPedido}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                  >
-                    Zerar
-                  </button>
-                </>
-              )}
+        {erro && (
+          <div className="px-4 pt-4 sm:px-6 lg:px-8 lg:pt-6">
+            <div
+              role="alert"
+              className="mx-auto flex max-w-[88rem] items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            >
+              <span>{erro}</span>
               <button
-                type="button"
-                onClick={exportar}
-                disabled={resumo.itens === 0 || exportando}
-                className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-stone-300"
+                onClick={() => setErro(null)}
+                className={`${foco} -m-1 rounded p-1 text-red-700 hover:bg-red-100`}
+                aria-label="Fechar aviso"
               >
-                {exportando ? "Gerando…" : "Exportar planilha"}
+                <IconeFechar />
               </button>
             </div>
           </div>
-        </footer>
-      )}
+        )}
+
+        {!tabela ? (
+          /* Tela inicial: importar */
+          <main className="flex flex-1 items-center justify-center px-4 py-12">
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setArrastando(true);
+              }}
+              onDragLeave={() => setArrastando(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setArrastando(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) abrirArquivo(f);
+              }}
+              className={`flex w-full max-w-xl flex-col items-center rounded-2xl border-2 border-dashed px-8 py-14 text-center transition-colors ${
+                arrastando ? "border-emerald-500 bg-emerald-50" : "border-stone-300 bg-white"
+              }`}
+            >
+              <div className="mb-5 grid h-14 w-14 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+                <IconePlanilha tamanho={28} />
+              </div>
+              <h1 className="text-xl font-bold text-stone-900">Importe a tabela de reposição</h1>
+              <p className="mt-2 max-w-sm text-sm text-stone-600">
+                Escolha a planilha (.xls ou .xlsx) ou arraste ela aqui. Depois é só preencher as quantidades e exportar o
+                pedido no mesmo formato.
+              </p>
+              <button
+                type="button"
+                onClick={abrirSeletor}
+                className={`${foco} mt-7 rounded-xl bg-emerald-700 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-emerald-800`}
+              >
+                Importar tabela
+              </button>
+            </div>
+          </main>
+        ) : (
+          <main className="w-full flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
+            <div className="mx-auto max-w-[88rem]">
+              {/* Cabeçalho da página */}
+              <div>
+                <h1 className="truncate text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl">
+                  {tabela.nomeArquivo}
+                </h1>
+                <p className="mt-1 text-sm text-stone-500">
+                  Aba {tabela.nomeAba} · importada {importadaEm}
+                </p>
+              </div>
+
+              {/* Números do pedido */}
+              <dl className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4">
+                <Numero
+                  rotulo="Na tabela"
+                  valor={String(tabela.produtos.length)}
+                  detalhe={semEstoque ? `${semEstoque} sem estoque` : "produtos"}
+                />
+                <Numero
+                  rotulo="No pedido"
+                  valor={String(resumo.itens)}
+                  detalhe={`${resumo.unidades} ${resumo.unidades === 1 ? "unidade" : "unidades"}`}
+                  ativo={resumo.itens > 0}
+                />
+                <Numero
+                  rotulo="Total no varejo"
+                  valor={formatarReais(resumo.valor)}
+                  detalhe="quantidade × R$ varejo"
+                  className="hidden sm:block"
+                />
+              </dl>
+
+              {/* Produtos */}
+              <section
+                aria-labelledby="titulo-produtos"
+                className="mt-6 rounded-2xl border border-stone-200 bg-white shadow-[0_1px_3px_rgba(28,31,26,0.05)] sm:mt-8"
+              >
+                <div className="space-y-4 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+                    <div>
+                      <h2 id="titulo-produtos" className="text-base font-semibold text-stone-900">
+                        Produtos
+                      </h2>
+                      <p className="mt-0.5 text-sm text-stone-500" aria-live="polite">
+                        Mostrando {visiveis.length} de {tabela.produtos.length}
+                      </p>
+                    </div>
+                    <div role="group" aria-label="Quais produtos mostrar" className="inline-flex rounded-xl bg-stone-100 p-1">
+                      <Aba ativo={!soSelecionados} aoClicar={() => setSoSelecionados(false)}>
+                        Todos
+                      </Aba>
+                      <Aba ativo={soSelecionados} aoClicar={() => setSoSelecionados(true)}>
+                        No pedido <span className="tabular-nums text-stone-500">{resumo.itens}</span>
+                      </Aba>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <div className="relative min-w-[14rem] flex-1">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-500">
+                        <IconeBusca />
+                      </span>
+                      <input
+                        type="search"
+                        value={busca}
+                        onChange={(e) => setBusca(e.target.value)}
+                        placeholder="Buscar por nome, sabor, ID ou marca…"
+                        aria-label="Buscar produto"
+                        className="h-10 w-full rounded-xl border border-stone-300 bg-white pl-9 pr-3 text-sm outline-none placeholder:text-stone-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15"
+                      />
+                    </div>
+                    <select
+                      value={marca}
+                      onChange={(e) => setMarca(e.target.value)}
+                      aria-label="Filtrar por marca"
+                      className="h-10 min-w-[11rem] rounded-xl border border-stone-300 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15"
+                    >
+                      <option value="">Todas as marcas ({marcas.length})</option>
+                      {marcas.map(([m, n]) => (
+                        <option key={m} value={m}>
+                          {m} ({n})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 text-xs font-medium text-stone-500">Tipo</span>
+                    {TIPOS.filter((t) => contagemTipos[t]).map((t) => {
+                      const ativo = tipos.includes(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          aria-pressed={ativo}
+                          onClick={() => setTipos((a) => (ativo ? a.filter((x) => x !== t) : [...a, t]))}
+                          className={`${foco} rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                            ativo
+                              ? "border-emerald-700 bg-emerald-700 text-white"
+                              : "border-stone-300 bg-white text-stone-700 hover:border-stone-400"
+                          }`}
+                        >
+                          {t} <span className={ativo ? "text-emerald-100" : "text-stone-500"}>{contagemTipos[t]}</span>
+                        </button>
+                      );
+                    })}
+                    {filtrosAtivos ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBusca("");
+                          setMarca("");
+                          setTipos([]);
+                          setSoSelecionados(false);
+                        }}
+                        className={`${foco} ml-auto rounded text-xs font-medium text-emerald-800 underline-offset-4 hover:underline`}
+                      >
+                        Limpar filtros
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto border-t border-stone-200">
+                  <table className="w-full min-w-[760px] border-collapse">
+                    <thead className="bg-stone-50 text-left text-xs font-medium text-stone-500">
+                      <tr className="border-b border-stone-200">
+                        <Cabecalho titulo="ID" campo="original" ordem={ordem} aoClicar={alternarOrdem} primeira />
+                        <Cabecalho titulo="Produto" campo="nome" ordem={ordem} aoClicar={alternarOrdem} />
+                        <Cabecalho titulo="Marca" campo="fabricante" ordem={ordem} aoClicar={alternarOrdem} />
+                        <Cabecalho titulo="Estoque" campo="estoque" ordem={ordem} aoClicar={alternarOrdem} direita />
+                        <Cabecalho titulo="R$ Varejo" campo="preco" ordem={ordem} aoClicar={alternarOrdem} direita />
+                        <th className="px-3 py-2.5 pr-4 text-right sm:pr-5">Pedir</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visiveis.map((p) => (
+                        <LinhaProduto key={p.chave} produto={p} quantidade={qtds[p.chave] ?? 0} aoMudar={mudarQuantidade} />
+                      ))}
+                    </tbody>
+                  </table>
+                  {visiveis.length === 0 && (
+                    <div className="px-4 py-14 text-center text-sm text-stone-500">
+                      {soSelecionados && resumo.itens === 0
+                        ? "Nenhum produto com quantidade ainda."
+                        : "Nenhum produto encontrado com esses filtros."}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          </main>
+        )}
+
+        {/* Barra do pedido (celular e tablet): exportar sempre à mão */}
+        {tabela && (
+          <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white lg:hidden">
+            <div className="flex items-center gap-2 px-4 py-3 sm:px-6">
+              <div className="mr-auto min-w-0">
+                <div className="text-xs text-stone-500">Total no varejo</div>
+                <div className="whitespace-nowrap text-base font-semibold tabular-nums text-stone-900">
+                  {formatarReais(resumo.valor)}
+                </div>
+              </div>
+              {resumo.itens > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoZerar(true)}
+                  className={`${foco} rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50`}
+                >
+                  Zerar
+                </button>
+              )}
+              {botaoExportar("")}
+            </div>
+          </footer>
+        )}
+      </div>
     </div>
+  );
+}
+
+/** Anel de foco do teclado, igual em todos os botões */
+const foco = "outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2";
+
+function Marca() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-700 text-white">
+        <IconePlanilha tamanho={18} />
+      </span>
+      <span className="text-[15px] font-semibold tracking-tight text-stone-900">Pedido de Reposição</span>
+    </div>
+  );
+}
+
+function Aba({ ativo, aoClicar, children }: { ativo: boolean; aoClicar: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={ativo}
+      onClick={aoClicar}
+      className={`${foco} rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+        ativo ? "bg-white text-stone-900 shadow-[0_1px_2px_rgba(28,31,26,0.12)]" : "text-stone-600 hover:text-stone-900"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -420,33 +543,121 @@ function Cabecalho({
   ordem,
   aoClicar,
   direita,
+  primeira,
 }: {
   titulo: string;
   campo: CampoOrdem;
   ordem: { campo: CampoOrdem; asc: boolean };
   aoClicar: (c: CampoOrdem) => void;
   direita?: boolean;
+  primeira?: boolean;
 }) {
   const ativo = ordem.campo === campo;
   return (
-    <th className={`px-3 py-2.5 ${direita ? "text-right" : ""}`}>
+    <th
+      aria-sort={ativo ? (ordem.asc ? "ascending" : "descending") : undefined}
+      className={`px-3 py-2.5 ${primeira ? "pl-4 sm:pl-5" : ""} ${direita ? "text-right" : ""}`}
+    >
       <button
         type="button"
         onClick={() => aoClicar(campo)}
-        className={`inline-flex items-center gap-1 uppercase hover:text-stone-800 ${ativo ? "text-stone-800" : ""}`}
+        className={`${foco} inline-flex items-center gap-1 whitespace-nowrap rounded hover:text-stone-900 ${ativo ? "text-stone-900" : ""}`}
       >
         {titulo}
-        <span className={ativo ? "opacity-100" : "opacity-0"}>{ordem.asc ? "↑" : "↓"}</span>
+        <span className={ativo ? "opacity-100" : "opacity-0"}>
+          <IconeSeta paraCima={ordem.asc} />
+        </span>
       </button>
     </th>
   );
 }
 
-function Numero({ rotulo, valor }: { rotulo: string; valor: string }) {
+function Numero({
+  rotulo,
+  valor,
+  detalhe,
+  ativo,
+  className = "",
+}: {
+  rotulo: string;
+  valor: string;
+  detalhe: string;
+  ativo?: boolean;
+  className?: string;
+}) {
   return (
-    <div>
-      <div className="text-[11px] font-medium uppercase tracking-wide text-stone-400">{rotulo}</div>
-      <div className="text-base font-bold tabular-nums text-stone-900">{valor}</div>
+    <div
+      className={`${className} min-w-0 rounded-2xl border p-3 sm:p-5 ${
+        ativo ? "border-amber-300 bg-amber-50" : "border-stone-200 bg-white shadow-[0_1px_3px_rgba(28,31,26,0.05)]"
+      }`}
+    >
+      <dt className="truncate text-xs font-medium text-stone-500 sm:text-sm">{rotulo}</dt>
+      <dd className="mt-1 truncate text-lg font-semibold tabular-nums tracking-tight text-stone-900 sm:mt-2 sm:text-2xl">
+        {valor}
+      </dd>
+      <dd className={`mt-0.5 hidden truncate text-xs sm:block ${ativo ? "text-amber-900" : "text-stone-500"}`}>{detalhe}</dd>
     </div>
+  );
+}
+
+/* Ícones (traço 1.8, mesmo desenho em todo o app) */
+
+function Icone({ tamanho = 16, children }: { tamanho?: number; children: React.ReactNode }) {
+  return (
+    <svg
+      width={tamanho}
+      height={tamanho}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {children}
+    </svg>
+  );
+}
+
+function IconePlanilha({ tamanho }: { tamanho?: number }) {
+  return (
+    <Icone tamanho={tamanho}>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </Icone>
+  );
+}
+
+function IconeBusca() {
+  return (
+    <Icone>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Icone>
+  );
+}
+
+function IconeBaixar() {
+  return (
+    <Icone>
+      <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+    </Icone>
+  );
+}
+
+function IconeFechar() {
+  return (
+    <Icone>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </Icone>
+  );
+}
+
+function IconeSeta({ paraCima }: { paraCima: boolean }) {
+  return (
+    <Icone tamanho={12}>
+      <path d={paraCima ? "M12 19V5M6 11l6-6 6 6" : "M12 5v14M6 13l6 6 6-6"} />
+    </Icone>
   );
 }
