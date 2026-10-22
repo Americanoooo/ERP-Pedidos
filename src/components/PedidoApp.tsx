@@ -156,6 +156,13 @@ export default function PedidoApp() {
   }
 
   const filtrosAtivos = busca || marca || tipos.length || soSelecionados;
+
+  function limparFiltros() {
+    setBusca("");
+    setMarca("");
+    setTipos([]);
+    setSoSelecionados(false);
+  }
   const semEstoque = useMemo(
     () => tabela?.produtos.filter((p) => p.estoque !== null && p.estoque <= 0).length ?? 0,
     [tabela],
@@ -171,7 +178,7 @@ export default function PedidoApp() {
       type="button"
       onClick={exportar}
       disabled={resumo.itens === 0 || exportando}
-      className={`${foco} inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(4,47,30,0.25)] hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-500 disabled:shadow-none ${classe}`}
+      className={`${foco} inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-x3 px-4 py-2.5 text-sm font-semibold text-tinta shadow-[0_1px_2px_rgba(17,17,17,0.18)] hover:bg-x3-escuro disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500 disabled:shadow-none ${classe}`}
     >
       <IconeBaixar />
       {exportando ? (
@@ -207,7 +214,7 @@ export default function PedidoApp() {
         aoCancelar={() => setConfirmandoZerar(false)}
       >
         As quantidades de{" "}
-        <strong className="font-semibold text-stone-900">
+        <strong className="font-semibold text-neutral-900">
           {resumo.itens} {resumo.itens === 1 ? "produto" : "produtos"} ({resumo.unidades}{" "}
           {resumo.unidades === 1 ? "unidade" : "unidades"})
         </strong>{" "}
@@ -221,74 +228,26 @@ export default function PedidoApp() {
         aoConfirmar={() => arquivoPendente && importar(arquivoPendente)}
         aoCancelar={() => setArquivoPendente(null)}
       >
-        Abrir <strong className="break-all font-semibold text-stone-900">{arquivoPendente?.name}</strong> apaga as
+        Abrir <strong className="break-all font-semibold text-neutral-900">{arquivoPendente?.name}</strong> apaga as
         quantidades de{" "}
-        <strong className="font-semibold text-stone-900">
+        <strong className="font-semibold text-neutral-900">
           {resumo.itens} {resumo.itens === 1 ? "produto" : "produtos"} ({resumo.unidades}{" "}
           {resumo.unidades === 1 ? "unidade" : "unidades"})
         </strong>{" "}
         do pedido atual. Se ainda precisa delas, exporte o pedido antes.
       </ConfirmarDialogo>
 
-      {/* Lateral (desktop): marca, ação principal e a tabela em uso */}
-      <aside className="sticky top-0 hidden h-screen flex-col border-l border-stone-200 bg-white px-4 py-5 lg:order-last lg:flex">
-        <Marca />
-
-        {tabela && (
-          <>
-            <div className="mt-8 space-y-2">
-              {botaoExportar("w-full")}
-              <p className="px-1 text-center text-xs tabular-nums text-stone-500">
-                {resumo.itens
-                  ? `${resumo.unidades} ${resumo.unidades === 1 ? "unidade" : "unidades"} · ${formatarReais(resumo.valor)}`
-                  : "Preencha a coluna Pedir para exportar"}
-              </p>
-              {resumo.itens > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmandoZerar(true)}
-                  className={`${foco} w-full rounded-xl px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50`}
-                >
-                  Zerar pedido
-                </button>
-              )}
-            </div>
-
-            <div className="mt-auto rounded-xl bg-stone-50 p-3">
-              <div className="flex items-start gap-2.5">
-                <span className="mt-0.5 text-emerald-700">
-                  <IconePlanilha tamanho={18} />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-stone-800" title={tabela.nomeArquivo}>
-                    {tabela.nomeArquivo}
-                  </p>
-                  <p className="mt-0.5 text-xs text-stone-500">Importada {importadaEm}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={abrirSeletor}
-                className={`${foco} mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100`}
-              >
-                Importar outra tabela
-              </button>
-            </div>
-          </>
-        )}
-      </aside>
-
       <div className="flex min-w-0 flex-col">
         {/* Topo (celular e tablet) */}
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-6 lg:hidden">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-3 sm:px-6 lg:hidden">
           <Marca />
           {tabela && (
             <button
               type="button"
               onClick={abrirSeletor}
-              className={`${foco} ml-auto rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50`}
+              className={`${foco} ml-auto whitespace-nowrap rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50`}
             >
-              Importar tabela
+              Importar<span className="hidden sm:inline"> tabela</span>
             </button>
           )}
         </header>
@@ -327,21 +286,21 @@ export default function PedidoApp() {
                 if (f) abrirArquivo(f);
               }}
               className={`flex w-full max-w-xl flex-col items-center rounded-2xl border-2 border-dashed px-8 py-14 text-center transition-colors ${
-                arrastando ? "border-emerald-500 bg-emerald-50" : "border-stone-300 bg-white"
+                arrastando ? "border-x3 bg-x3-suave" : "border-neutral-300 bg-white"
               }`}
             >
-              <div className="mb-5 grid h-14 w-14 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+              <div className="mb-5 grid h-14 w-14 place-items-center rounded-xl bg-x3-suave text-x3-texto">
                 <IconePlanilha tamanho={28} />
               </div>
-              <h1 className="text-xl font-bold text-stone-900">Importe a tabela de reposição</h1>
-              <p className="mt-2 max-w-sm text-sm text-stone-600">
+              <h1 className="tipo-display text-balance text-2xl text-tinta">Importe a tabela de reposição</h1>
+              <p className="mt-2 max-w-sm text-pretty text-sm text-neutral-600">
                 Escolha a planilha (.xls ou .xlsx) ou arraste ela aqui. Depois é só preencher as quantidades e exportar o
                 pedido no mesmo formato.
               </p>
               <button
                 type="button"
                 onClick={abrirSeletor}
-                className={`${foco} mt-7 rounded-xl bg-emerald-700 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-emerald-800`}
+                className={`${foco} mt-7 rounded-xl bg-x3 px-6 py-3 text-base font-semibold text-tinta shadow-[0_1px_2px_rgba(17,17,17,0.18)] hover:bg-x3-escuro`}
               >
                 Importar tabela
               </button>
@@ -352,10 +311,10 @@ export default function PedidoApp() {
             <div className="mx-auto max-w-[88rem]">
               {/* Cabeçalho da página */}
               <div>
-                <h1 className="truncate text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl">
+                <h1 className="tipo-display truncate text-2xl text-tinta sm:text-[2rem]">
                   {tabela.nomeArquivo}
                 </h1>
-                <p className="mt-1 text-sm text-stone-500">
+                <p className="mt-1 text-sm text-neutral-500">
                   Aba {tabela.nomeAba} · importada {importadaEm}
                 </p>
               </div>
@@ -384,31 +343,31 @@ export default function PedidoApp() {
               {/* Produtos */}
               <section
                 aria-labelledby="titulo-produtos"
-                className="mt-6 rounded-2xl border border-stone-200 bg-white shadow-[0_1px_3px_rgba(28,31,26,0.05)] sm:mt-8"
+                className="mt-6 rounded-2xl border border-neutral-200 bg-white shadow-[0_1px_3px_rgba(17,17,17,0.05)] sm:mt-8"
               >
                 <div className="space-y-4 p-4 sm:p-5">
                   <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
                     <div>
-                      <h2 id="titulo-produtos" className="text-base font-semibold text-stone-900">
+                      <h2 id="titulo-produtos" className="text-lg font-bold leading-snug text-tinta">
                         Produtos
                       </h2>
-                      <p className="mt-0.5 text-sm text-stone-500" aria-live="polite">
+                      <p className="mt-0.5 text-sm text-neutral-500" aria-live="polite">
                         Mostrando {visiveis.length} de {tabela.produtos.length}
                       </p>
                     </div>
-                    <div role="group" aria-label="Quais produtos mostrar" className="inline-flex rounded-xl bg-stone-100 p-1">
+                    <div role="group" aria-label="Quais produtos mostrar" className="inline-flex rounded-xl bg-neutral-100 p-1">
                       <Aba ativo={!soSelecionados} aoClicar={() => setSoSelecionados(false)}>
                         Todos
                       </Aba>
                       <Aba ativo={soSelecionados} aoClicar={() => setSoSelecionados(true)}>
-                        No pedido <span className="tabular-nums text-stone-500">{resumo.itens}</span>
+                        No pedido <span className="tabular-nums text-neutral-500">{resumo.itens}</span>
                       </Aba>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     <div className="relative min-w-[14rem] flex-1">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-500">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
                         <IconeBusca />
                       </span>
                       <input
@@ -417,14 +376,24 @@ export default function PedidoApp() {
                         onChange={(e) => setBusca(e.target.value)}
                         placeholder="Buscar por nome, sabor, ID ou marca…"
                         aria-label="Buscar produto"
-                        className="h-10 w-full rounded-xl border border-stone-300 bg-white pl-9 pr-3 text-sm outline-none placeholder:text-stone-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15"
+                        className="h-10 w-full rounded-xl border border-neutral-300 bg-white pl-9 pr-10 text-sm outline-none placeholder:text-neutral-500 focus:border-x3-texto focus:ring-2 focus:ring-x3/30 [&::-webkit-search-cancel-button]:appearance-none"
                       />
+                      {busca && (
+                        <button
+                          type="button"
+                          onClick={() => setBusca("")}
+                          aria-label="Limpar busca"
+                          className={`${foco} absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800`}
+                        >
+                          <IconeFechar />
+                        </button>
+                      )}
                     </div>
                     <select
                       value={marca}
                       onChange={(e) => setMarca(e.target.value)}
                       aria-label="Filtrar por marca"
-                      className="h-10 min-w-[11rem] rounded-xl border border-stone-300 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15"
+                      className="h-10 min-w-[11rem] rounded-xl border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-x3-texto focus:ring-2 focus:ring-x3/30"
                     >
                       <option value="">Todas as marcas ({marcas.length})</option>
                       {marcas.map(([m, n]) => (
@@ -436,7 +405,7 @@ export default function PedidoApp() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 text-xs font-medium text-stone-500">Tipo</span>
+                    <span className="mr-1 text-xs font-medium text-neutral-500">Tipo</span>
                     {TIPOS.filter((t) => contagemTipos[t]).map((t) => {
                       const ativo = tipos.includes(t);
                       return (
@@ -447,24 +416,19 @@ export default function PedidoApp() {
                           onClick={() => setTipos((a) => (ativo ? a.filter((x) => x !== t) : [...a, t]))}
                           className={`${foco} rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                             ativo
-                              ? "border-emerald-700 bg-emerald-700 text-white"
-                              : "border-stone-300 bg-white text-stone-700 hover:border-stone-400"
+                              ? "border-tinta bg-tinta text-white"
+                              : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400"
                           }`}
                         >
-                          {t} <span className={ativo ? "text-emerald-100" : "text-stone-500"}>{contagemTipos[t]}</span>
+                          {t} <span className={ativo ? "text-x3" : "text-neutral-500"}>{contagemTipos[t]}</span>
                         </button>
                       );
                     })}
                     {filtrosAtivos ? (
                       <button
                         type="button"
-                        onClick={() => {
-                          setBusca("");
-                          setMarca("");
-                          setTipos([]);
-                          setSoSelecionados(false);
-                        }}
-                        className={`${foco} ml-auto rounded text-xs font-medium text-emerald-800 underline-offset-4 hover:underline`}
+                        onClick={limparFiltros}
+                        className={`${foco} ml-auto rounded text-xs font-medium text-x3-texto underline-offset-4 hover:underline`}
                       >
                         Limpar filtros
                       </button>
@@ -472,29 +436,51 @@ export default function PedidoApp() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto border-t border-stone-200">
-                  <table className="w-full min-w-[760px] border-collapse">
-                    <thead className="bg-stone-50 text-left text-xs font-medium text-stone-500">
-                      <tr className="border-b border-stone-200">
-                        <Cabecalho titulo="ID" campo="original" ordem={ordem} aoClicar={alternarOrdem} primeira />
-                        <Cabecalho titulo="Produto" campo="nome" ordem={ordem} aoClicar={alternarOrdem} />
-                        <Cabecalho titulo="Marca" campo="fabricante" ordem={ordem} aoClicar={alternarOrdem} />
-                        <Cabecalho titulo="Estoque" campo="estoque" ordem={ordem} aoClicar={alternarOrdem} direita />
-                        <Cabecalho titulo="R$ Varejo" campo="preco" ordem={ordem} aoClicar={alternarOrdem} direita />
-                        <th className="px-3 py-2.5 pr-4 text-right sm:pr-5">Pedir</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visiveis.map((p) => (
-                        <LinhaProduto key={p.chave} produto={p} quantidade={qtds[p.chave] ?? 0} aoMudar={mudarQuantidade} />
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="overflow-x-auto border-t border-neutral-200 lg:overflow-visible">
+                  {visiveis.length > 0 && (
+                    <table className="w-full min-w-[600px] border-collapse xl:min-w-[760px]">
+                      <thead className="text-left text-xs font-medium text-neutral-500 [&_th]:bg-neutral-50 lg:[&_th]:sticky lg:[&_th]:top-0 lg:[&_th]:z-10 lg:[&_th]:shadow-[inset_0_-1px_0_var(--color-neutral-200)]">
+                        <tr className="border-b border-neutral-200">
+                          <Cabecalho titulo="ID" campo="original" ordem={ordem} aoClicar={alternarOrdem} primeira />
+                          <Cabecalho titulo="Produto" campo="nome" ordem={ordem} aoClicar={alternarOrdem} />
+                          <Cabecalho titulo="Marca" campo="fabricante" ordem={ordem} aoClicar={alternarOrdem} className="hidden xl:table-cell" />
+                          <Cabecalho titulo="Estoque" campo="estoque" ordem={ordem} aoClicar={alternarOrdem} direita />
+                          <Cabecalho titulo="R$ Varejo" campo="preco" ordem={ordem} aoClicar={alternarOrdem} direita />
+                          <th className="px-3 py-2.5 pr-4 text-right sm:pr-5">Pedir</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visiveis.map((p) => (
+                          <LinhaProduto key={p.chave} produto={p} quantidade={qtds[p.chave] ?? 0} aoMudar={mudarQuantidade} />
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                   {visiveis.length === 0 && (
-                    <div className="px-4 py-14 text-center text-sm text-stone-500">
-                      {soSelecionados && resumo.itens === 0
-                        ? "Nenhum produto com quantidade ainda."
-                        : "Nenhum produto encontrado com esses filtros."}
+                    <div className="flex flex-col items-center gap-3 px-4 py-14 text-center text-sm text-neutral-600">
+                      {soSelecionados && resumo.itens === 0 ? (
+                        <>
+                          <p>Nenhum produto com quantidade ainda.</p>
+                          <button
+                            type="button"
+                            onClick={() => setSoSelecionados(false)}
+                            className={`${foco} rounded-lg border border-neutral-300 bg-white px-3 py-2 font-medium text-neutral-800 hover:bg-neutral-50`}
+                          >
+                            Ver todos os produtos
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p>Nenhum produto encontrado com esses filtros.</p>
+                          <button
+                            type="button"
+                            onClick={limparFiltros}
+                            className={`${foco} rounded-lg border border-neutral-300 bg-white px-3 py-2 font-medium text-neutral-800 hover:bg-neutral-50`}
+                          >
+                            Limpar filtros
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -505,11 +491,11 @@ export default function PedidoApp() {
 
         {/* Barra do pedido (celular e tablet): exportar sempre à mão */}
         {tabela && (
-          <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white lg:hidden">
+          <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white lg:hidden">
             <div className="flex items-center gap-2 px-4 py-3 sm:px-6">
               <div className="mr-auto min-w-0">
-                <div className="text-xs text-stone-500">Total no varejo</div>
-                <div className="whitespace-nowrap text-base font-semibold tabular-nums text-stone-900">
+                <div className="text-xs text-neutral-500">Total no varejo</div>
+                <div className="whitespace-nowrap text-base font-semibold tabular-nums text-neutral-900">
                   {formatarReais(resumo.valor)}
                 </div>
               </div>
@@ -517,6 +503,7 @@ export default function PedidoApp() {
                 <button
                   type="button"
                   onClick={() => setConfirmandoZerar(true)}
+
                   className={`${foco} rounded-xl px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50`}
                 >
                   Zerar
@@ -527,20 +514,71 @@ export default function PedidoApp() {
           </footer>
         )}
       </div>
+
+      {/* Lateral direita (desktop): vem depois do conteúdo no HTML, então o Tab passa pelos produtos antes do Exportar */}
+      <aside className="sticky top-0 hidden h-screen flex-col border-l border-neutral-200 bg-white px-4 py-5 lg:flex">
+        <Marca />
+
+        {tabela && (
+          <>
+            <div className="mt-8 space-y-2">
+              {botaoExportar("w-full")}
+              <p className="px-1 text-center text-xs tabular-nums text-neutral-500">
+                {resumo.itens
+                  ? `${resumo.unidades} ${resumo.unidades === 1 ? "unidade" : "unidades"} · ${formatarReais(resumo.valor)}`
+                  : "Preencha a coluna Pedir para exportar"}
+              </p>
+              {resumo.itens > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoZerar(true)}
+                  className={`${foco} w-full rounded-xl px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50`}
+                >
+                  Zerar pedido
+                </button>
+              )}
+            </div>
+
+            <div className="mt-auto rounded-xl bg-neutral-50 p-3">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 text-x3-texto">
+                  <IconePlanilha tamanho={18} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-neutral-800" title={tabela.nomeArquivo}>
+                    {tabela.nomeArquivo}
+                  </p>
+                  <p className="mt-0.5 text-xs text-neutral-500">Importada {importadaEm}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={abrirSeletor}
+                className={`${foco} mt-3 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100`}
+              >
+                Importar outra tabela
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
     </div>
   );
 }
 
 /** Anel de foco do teclado, igual em todos os botões */
-const foco = "outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2";
+const foco = "outline-none focus-visible:ring-2 focus-visible:ring-x3-texto focus-visible:ring-offset-2";
 
 function Marca() {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-700 text-white">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-tinta text-x3">
         <IconePlanilha tamanho={18} />
       </span>
-      <span className="text-[15px] font-semibold tracking-tight text-stone-900">Pedido de Reposição</span>
+      <span className="leading-tight">
+        <span className="tipo-display block whitespace-nowrap text-[1.0625rem] uppercase text-tinta">Pedido de Reposição</span>
+        <span className="block text-xs font-medium text-neutral-500">X3 Suplementos</span>
+      </span>
     </div>
   );
 }
@@ -552,7 +590,7 @@ function Aba({ ativo, aoClicar, children }: { ativo: boolean; aoClicar: () => vo
       aria-pressed={ativo}
       onClick={aoClicar}
       className={`${foco} rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-        ativo ? "bg-white text-stone-900 shadow-[0_1px_2px_rgba(28,31,26,0.12)]" : "text-stone-600 hover:text-stone-900"
+        ativo ? "bg-white text-neutral-900 shadow-[0_1px_2px_rgba(17,17,17,0.12)]" : "text-neutral-600 hover:text-neutral-900"
       }`}
     >
       {children}
@@ -567,6 +605,7 @@ function Cabecalho({
   aoClicar,
   direita,
   primeira,
+  className = "",
 }: {
   titulo: string;
   campo: CampoOrdem;
@@ -574,17 +613,18 @@ function Cabecalho({
   aoClicar: (c: CampoOrdem) => void;
   direita?: boolean;
   primeira?: boolean;
+  className?: string;
 }) {
   const ativo = ordem.campo === campo;
   return (
     <th
       aria-sort={ativo ? (ordem.asc ? "ascending" : "descending") : undefined}
-      className={`px-3 py-2.5 ${primeira ? "pl-4 sm:pl-5" : ""} ${direita ? "text-right" : ""}`}
+      className={`px-3 py-2.5 ${primeira ? "pl-4 sm:pl-5" : ""} ${direita ? "text-right" : ""} ${className}`}
     >
       <button
         type="button"
         onClick={() => aoClicar(campo)}
-        className={`${foco} inline-flex items-center gap-1 whitespace-nowrap rounded hover:text-stone-900 ${ativo ? "text-stone-900" : ""}`}
+        className={`${foco} inline-flex items-center gap-1 whitespace-nowrap rounded hover:text-neutral-900 ${ativo ? "text-neutral-900" : ""}`}
       >
         {titulo}
         <span className={ativo ? "opacity-100" : "opacity-0"}>
@@ -611,14 +651,14 @@ function Numero({
   return (
     <div
       className={`${className} min-w-0 rounded-2xl border p-3 sm:p-5 ${
-        ativo ? "border-amber-300 bg-amber-50" : "border-stone-200 bg-white shadow-[0_1px_3px_rgba(28,31,26,0.05)]"
+        ativo ? "border-x3-borda bg-x3-suave" : "border-neutral-200 bg-white shadow-[0_1px_3px_rgba(17,17,17,0.05)]"
       }`}
     >
-      <dt className="truncate text-xs font-medium text-stone-500 sm:text-sm">{rotulo}</dt>
-      <dd className="mt-1 truncate text-lg font-semibold tabular-nums tracking-tight text-stone-900 sm:mt-2 sm:text-2xl">
+      <dt className="truncate text-xs font-medium text-neutral-500 sm:text-sm">{rotulo}</dt>
+      <dd className="tipo-display mt-1 truncate text-2xl tabular-nums text-tinta sm:mt-2 sm:text-[1.75rem]">
         {valor}
       </dd>
-      <dd className={`mt-0.5 hidden truncate text-xs sm:block ${ativo ? "text-amber-900" : "text-stone-500"}`}>{detalhe}</dd>
+      <dd className={`mt-0.5 hidden truncate text-xs sm:block ${ativo ? "text-x3-texto" : "text-neutral-500"}`}>{detalhe}</dd>
     </div>
   );
 }

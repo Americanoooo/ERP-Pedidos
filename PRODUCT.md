@@ -39,11 +39,13 @@ Não substitui a planilha do distribuidor: trabalha em cima dela. Lê qualquer v
 
 ## Brand Commitments
 
-Nome do produto: "Pedido de Reposição". Nenhuma identidade visual, logo ou marca da rede foi definida como obrigatória.
+- A rede é a **X3 Suplementos**. Nome do produto: "Pedido de Reposição".
+- Logo de referência em `reference/logo.png` (preto, branco e verde-limão ~#8CC63F). **Não colocar a logo no site**; usá-la só como referência para o site ser reconhecido como da X3.
+- Preferência confirmada: interface verde e branca, com cor só no essencial (ação, seleção, alerta).
 
 ## Evidence on Hand
 
-Nenhum material real no repositório (sem planilhas de exemplo, logos da rede ou depoimentos). Não inventar nomes de lojas, distribuidores, números de uso ou dados de clientes.
+Logo da X3 em `reference/logo.png` (só referência, não vai no site) e o print de referência de layout `reference/erp1.png`. Sem planilhas de exemplo nem depoimentos. Não inventar nomes de lojas, distribuidores, números de uso ou dados de clientes.
 
 ## Product Principles
 
